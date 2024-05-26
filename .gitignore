@@ -1,0 +1,69 @@
+# Ignore macOS system files
+.DS_Store
+
+# Ignore node_modules directory (if using Node.js)
+node_modules/
+
+# Ignore Python compiled files
+*.pyc
+__pycache__/
+
+# Ignore environment variables file
+.env
+
+# Ignore logs
+logs/
+*.log
+
+# Ignore Docker-specific files
+docker-compose.override.yml
+.dockerignore
+
+# Ignore local development files
+.vscode/
+.idea/
+*.swp
+
+# Ignore build artifacts
+dist/
+build/
+
+# Ignore generated documentation
+docs/_build/
+
+# Ignore sensitive configuration files
+config/
+
+# Ignore virtual environments
+venv/
+ENV/
+env/
+
+# Ignore temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Ignore the terraform state file if using Terraform
+*.tfstate
+*.tfstate.*
+
+# Ignore yarn files if using Yarn
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
+# Ignore coverage reports
+coverage/
+*.cover
+*.coverage
+coverage.*
+.cache
+
+# Ignore npm package logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
