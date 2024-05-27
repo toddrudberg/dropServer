@@ -4,7 +4,9 @@
 
 char ssid[] = "Turkey Point";      // your network SSID (name)
 char pass[] = "gobblegobble";   // your network password
-char server[] = "192.168.1.31"; // address of your server
+//char server[] = "192.168.1.31"; // address of your server
+char server[] = "64.23.202.34"; // address of your server
+
 
 int status = WL_IDLE_STATUS;     // the Wifi radio's status
 WiFiClient client;
