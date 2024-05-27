@@ -22,8 +22,8 @@ const csvWriter = require('csv-writer').createObjectCsvWriter;
 app.post('/log', (req, res) => {
   const logData = req.body;
 
-  console.log('CSV file path:', csvFilePath);
-  console.log('File exists:', fs.existsSync(csvFilePath));
+  // console.log('CSV file path:', csvFilePath);
+  // console.log('File exists:', fs.existsSync(csvFilePath));
 
   if (!fs.existsSync(csvFilePath)) {
     const headerRow = csvHeaders.join(',') + '\n';
@@ -59,6 +59,85 @@ app.get('/logs', (req, res) => {
   });
 });
 
+const autoWaterStatusFilePath = path.join(__dirname, 'autoWaterStatus.csv');
+
+app.post('/enableAutoWater', (req, res) => {
+  try {
+    fs.writeFileSync(autoWaterStatusFilePath, 'true');
+    console.log('Auto water enabled - command from iPhone');
+    res.status(200).send('Auto water enabled');
+  } catch (err) {
+    console.error('Error writing to autoWaterStatus.csv', err);
+    res.status(500).send('Error enabling auto water');
+  }
+});
+
+app.post('/disableAutoWater', (req, res) => {
+  try {
+    fs.writeFileSync(autoWaterStatusFilePath, 'false');
+    console.log('Auto water disabled');
+    res.status(200).send('Auto water disabled');
+  } catch (err) {
+    console.error('Error writing to autoWaterStatus.csv', err);
+    res.status(500).send('Error disabling auto water');
+  }
+});
+
+app.get('/autoWaterStatus', (req, res) => {
+  fs.readFile(autoWaterStatusFilePath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading from autoWaterStatus.csv', err);
+      res.status(200).send('-1');
+    } else {
+      console.log('Auto water status:', data);
+      if (data.trim() === 'true') {
+        res.status(200).send('1');
+      } else {
+        res.status(200).send('0');
+      }
+    }
+  });
+});
+
+const manualWaterOverrideFilePath = path.join(__dirname, 'manualWaterOverride.csv');
+
+app.post('/enableManualWater', (req, res) => {
+  try {
+    fs.writeFileSync(manualWaterOverrideFilePath, 'true');
+    console.log('Manual water enabled');
+    res.status(200).send('Manual water enabled');
+  } catch (err) {
+    console.error('Error writing to manualWaterOverride.csv', err);
+    res.status(500).send('Error enabling manual water');
+  }
+});
+
+app.post('/disableManualWater', (req, res) => {
+  try {
+    fs.writeFileSync(manualWaterOverrideFilePath, 'false');
+    console.log('Manual water disabled');
+    res.status(200).send('Manual water disabled');
+  } catch (err) {
+    console.error('Error writing to manualWaterOverride.csv', err);
+    res.status(500).send('Error disabling manual water');
+  }
+});
+
+app.get('/manualWaterStatus', (req, res) => {
+  fs.readFile(manualWaterOverrideFilePath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading from manualWaterOverride.csv', err);
+      res.status(200).send('-1');
+    } else {
+      console.log('Manual water status:', data);
+      if (data.trim() === 'true') {
+        res.status(200).send('1');
+      } else {
+        res.status(200).send('0');
+      }
+    }
+  });
+});
 
 const readLastLines = require('read-last-lines');
 const csvParser = require('csv-parser');
@@ -137,7 +216,7 @@ app.get('/last-row', (req, res) => {
       };
 
       res.json(response);
-      console.log('Last line:', response);
+      //console.log('Last line:', response);
     })
     .catch((err) => {
       console.error('Error reading last line:', err);
