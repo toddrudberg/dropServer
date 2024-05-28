@@ -139,6 +139,34 @@ app.get('/manualWaterStatus', (req, res) => {
   });
 });
 
+//let's get manualWatherOverride status and autoWaterStatus in one call
+//const fs = require('fs');
+//const path = require('path');
+
+app.get('/status', (req, res) => {
+  const manualWaterOverridePath = path.join(__dirname, 'manualWaterOverride.csv');
+  const autoWaterStatusPath = path.join(__dirname, 'autoWaterStatus.csv');
+
+  fs.readFile(manualWaterOverridePath, 'utf8', (err, manualWaterOverride) => {
+    if (err) {
+      console.error('Error reading manualWaterOverride.csv', err);
+      return res.status(500).send('Error reading manual water override status');
+    }
+
+    fs.readFile(autoWaterStatusPath, 'utf8', (err, autoWaterStatus) => {
+      if (err) {
+        console.error('Error reading autoWaterStatus.csv', err);
+        return res.status(500).send('Error reading auto water status');
+      }
+
+      res.json({
+        manualWaterOverride: manualWaterOverride.trim().toLowerCase() === 'true',
+        autoWaterStatus: autoWaterStatus.trim().toLowerCase() === 'true'
+      });
+    });
+  });
+});
+
 const readLastLines = require('read-last-lines');
 const csvParser = require('csv-parser');
 
