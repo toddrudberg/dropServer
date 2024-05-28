@@ -14,7 +14,7 @@ const csvFilePath = path.join(__dirname, 'data_log.csv');
 const csvHeaders = [
   'DateStamp', 'TimeStamp', 'Epoch', 'OutsideAirTemp', 'OutsideHumidity', 
   'OutsideBaro', 'SoilTemperature', 'SoilElectricalConductivity', 
-  'SoilHumidity', 'SoilPh', 'Watering', 'TimeRemaining', 'WifiError', 'SDError', 'RTCFailed'
+  'SoilHumidity', 'SoilPh', 'Watering', 'TimeRemaining', 'autoWaterCycleEnabled', 'WifiError', 'SDError', 'RTCFailed'
 ];
 
 const csvWriter = require('csv-writer').createObjectCsvWriter;
@@ -22,8 +22,8 @@ const csvWriter = require('csv-writer').createObjectCsvWriter;
 app.post('/log', (req, res) => {
   const logData = req.body;
 
-  // console.log('CSV file path:', csvFilePath);
-  // console.log('File exists:', fs.existsSync(csvFilePath));
+  console.log('CSV file path:', csvFilePath);
+  console.log('File exists:', fs.existsSync(csvFilePath));
 
   if (!fs.existsSync(csvFilePath)) {
     const headerRow = csvHeaders.join(',') + '\n';
@@ -35,7 +35,7 @@ app.post('/log', (req, res) => {
     logData.DateStamp, logData.TimeStamp, logData.Epoch, 
     logData.OutsideAirTemp, logData.OutsideHumidity, logData.OutsideBaro, 
     logData.SoilTemperature, logData.SoilElectricalConductivity, 
-    logData.SoilHumidity, logData.SoilPh, logData.Watering, logData.TimeRemaining,
+    logData.SoilHumidity, logData.SoilPh, logData.Watering, logData.TimeRemaining, logData.autoWaterCycleEnabled,
     logData.WifiError, logData.SDError, logData.RTCFailed
   ].join(',') + '\n';
 
@@ -148,58 +148,26 @@ app.get('/last-row', (req, res) => {
       const lastLine = lines.split('\n')[0];
       const data = lastLine.split(',');
 
-      // const epochTime = parseInt(data[2]);
-      // const date = new Date(epochTime * 1000);
-      // const dateStr = date.toISOString().split('T')[0];
-      // const timeStr = date.toISOString().split('T')[1].split('.')[0];
-      // # json data:
-      // char jsonData[] = "{"
-      // 0    "\"DateStamp\": \"2023-05-25\","
-      // 1    "\"TimeStamp\": \"12:34:56\","
-      // 2    "\"Epoch\": 1679850896,"
-      // 3    "\"OutsideAirTemp\": 22.5,"
-      // 4    "\"OutsideHumidity\": 45.2,"
-      // 5    "\"OutsideBaro\": 1013.1,"
-      // 6    "\"SoilTemperature\": 20.3,"
-      // 7    "\"SoilElectricalConductivity\": 1.2,"
-      // 8    "\"SoilHumidity\": 30.1,"
-      // 9    "\"SoilPh\": 6.5,"
-      // 10    "\"Watering\": true,"
-      // 11    "\"TimeRemaining\": 120,"
-      // 12    "\"WifiError\": false,"
-      // 13    "\"SDError\": false,"
-      // 14    "\"RTCFailed\": false"
-      // "}";
-
-      // struct ServerResponse: Codable 
-      // {
-      //     let date: String
-      //     let time: String
-      //     let oat: Float
-      //     let oah: Float
-      //     let oap: Float
-      //     let sm: Float
-      //     let st: Float
-      //     let sec: Float
-      //     let sph: Float
-      //     let watering: Bool
-      //     let wateringTimeRemaining: Float
-      
-      //     enum CodingKeys: String, CodingKey 
-      //     {
-      //         case date = "Date"
-      //         case time = "Time"
-      //         case oat = "OAT"
-      //         case oah = "OAH"
-      //         case oap = "BP"
-      //         case sm = "SM"
-      //         case st = "ST"
-      //         case sec = "SEC"
-      //         case sph = "SPH"
-      //         case watering = "WATERING"
-      //         case wateringTimeRemaining = "WATERINGTIMEREMAINING"
-      //     }
+      // 0 doc["DateStamp"] = dateBuffer;
+      // 1 doc["TimeStamp"] = timeBuffer;
+      // 2 doc["Epoch"] = epochTime;
+      // 3 doc["OutsideAirTemp"].set(round(totalState.soilSensorData.outsideAirTemp * 10.0) / 10.0);
+      // 4 doc["OutsideHumidity"].set(round(totalState.soilSensorData.outsideAirHumidity * 10.0) / 10.0);
+      // 5 doc["OutsideBaro"].set(round(totalState.soilSensorData.baroPressure * 100.0) / 100.0);
+      // 6 doc["SoilTemperature"].set(round(totalState.soilSensorData.soilTemperature * 10.0) / 10.0);
+      // 7 doc["SoilElectricalConductivity"].set(round(totalState.soilSensorData.soilElectricalConductivity * 10.0) / 10.0);
+      // 8 doc["SoilHumidity"].set(round(totalState.soilSensorData.soilMoisture * 10.0) / 10.0);
+      // 9 doc["SoilPh"].set(round(totalState.soilSensorData.soilPh * 10.0) / 10.0);
+      // 10 doc["Watering"] = totalState.watering;
+      // float wateringTimeRemaining = (totalState.wateringDuration - (logger.getUnixTime() - totalState.wateringTimeStart)) / 60.0;
+      // if (wateringTimeRemaining < 0 || wateringTimeRemaining > 100000) {
+      //     wateringTimeRemaining = 0;
       // }
+      // 11 doc["autoWaterCycleEnabled"] = totalState.autoWaterCycleEnabled;
+      // 12 doc["TimeRemaining"] = wateringTimeRemaining;
+      // 13 doc["WifiError"] = wifiConnectionFailed;
+      // 14 doc["SDError"] = !SD.exists(FileName);
+      // 15 doc["RTCFailed"] = rtcFailed;
 
       const response = {
         Time: data[1],
@@ -212,7 +180,8 @@ app.get('/last-row', (req, res) => {
         SEC: Math.round(parseFloat(data[7]) * 10) / 10,
         SPH: Math.round(parseFloat(data[9]) * 10) / 10,
         WATERING: data[10] === 'true',
-        WATERINGTIMEREMAINING: parseFloat(data[11])
+        WATERINGTIMEREMAINING: parseFloat(data[11]),
+        AUTO: data[12] === 'true'
       };
 
       res.json(response);

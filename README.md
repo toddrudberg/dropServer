@@ -2,6 +2,9 @@
 This is the digital ocean webserver for the gardenBot project
 ssh root@64.23.202.34
 curl http://64.23.202.34:3000/last-row
+curl http://64.23.202.34:3000/enableManualWater
+curl http://64.23.202.34:3000/disableManualWater
+curl http://192.168.1.31:3000/last-row
 
 # to build the application
 docker build -t dropserver .
@@ -12,11 +15,11 @@ docker buildx create --use
 docker buildx inspect --bootstrap
 
 # to run the container we use this command:
-docker run -d -p 3000:3000 --name the-dropserver dropserver
+docker run -d -p 3000:3000 --name local_dropserver dropserver
 
 # to deploy and run on the droplet:
 docker pull turkeypoint/dropserver:latest
-docker run -d -p 3000:3000 turkeypoint/dropserver:latest
+docker run -d -p 3000:3000 --name remote_dropserver turkeypoint/dropserver:latest
 
 
 # to view running containers:
