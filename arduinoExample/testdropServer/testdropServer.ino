@@ -2,15 +2,20 @@
 #include <SPI.h>
 #include <WiFi.h>
 
-char ssid[] = "Turkey Point";      // your network SSID (name)
-char pass[] = "gobblegobble";   // your network password
-char server[] = "192.168.1.31"; // address of your server
-int port = 3000;
+
+const char* ssid = "Turkey Point";
+const char* password = "gobblegobble";
+const char* remoteServer = "192.168.1.31"; // address of your server
+//const char* remoteServer = "64.23.202.34"; // address of your server
+const int remoteServerPort = 3000; // port of your server
+
 //char server[] = "64.23.202.34"; // address of your server
 
 
 int status = WL_IDLE_STATUS;     // the Wifi radio's status
 WiFiClient client;
+
+bool gRefreshRequest = false;
 
 void setup() {
     Serial.begin(9600); // Initialize serial communication at 9600 baud    
@@ -23,7 +28,7 @@ void setup() {
 
     WiFi.config(ip, dns, gateway, subnet);
     
-    WiFi.begin(ssid, pass);
+    WiFi.begin(ssid, password);
 
     while(WiFi.status() != WL_CONNECTED) {
         // print dots while we wait to connect
@@ -53,11 +58,69 @@ void setup() {
 }
 
 void loop() {
-    // if there's a successful connection:
+
+
+
+
+    manageDropServer();
+
+
+
+
+}
+
+
+//bool manageDropServer(sSoilSensorData* soilSensorData, time_t epochTime)
+bool manageDropServer()
+{
+        // if there's a successful connection:
     // Build the JSON data
     static bool autoWateringRequest = false;
     static bool manualWateringRequest = false;
     bool watering = manualWateringRequest;
+    static bool refreshRequest = false;
+    static bool autoWateringRequestlast = false;
+    static bool manualWateringRequestlast = false;
+
+    static unsigned long lastUpdate = 0;
+    static unsigned long lastLogtime = 0;
+    static int state = 0;
+    bool serverConnection = true;
+    bool updatetheServer;
+    if (millis() - lastUpdate > 10000) 
+    {
+        switch (state) 
+        {
+
+            case 0:
+
+                //serverConnection = read_dropServer(&autoWateringRequest, &manualWateringRequest);
+                read_dropServer(&autoWateringRequest, &manualWateringRequest, &refreshRequest);
+                // setAutolWaterStatus(autoWateringRequest);
+                // setManualWaterStatus(manualWateringRequest);
+                updatetheServer  =  autoWateringRequest != autoWateringRequestlast || 
+                                    manualWateringRequest != manualWateringRequestlast|| 
+                                    refreshRequest != gRefreshRequest;
+                if(millis() - lastLogtime > 60000 || updatetheServer)
+                {
+                    gRefreshRequest = refreshRequest;
+                    state++;
+                }
+                break;
+            case 1:
+                //serverConnection = update_dropServer(soilSensorData, epochTime);
+                update_dropServer(autoWateringRequest, manualWateringRequest, watering);
+                lastLogtime = millis();
+                state = 0;
+                break;
+        }
+        lastUpdate = millis();
+    }
+    return serverConnection;
+}
+
+void update_dropServer(bool autoWateringRequest, bool manualWateringRequest, bool watering)
+{
     char jsonData[512]; // adjust the size as needed
     unsigned long epoch = millis();
     snprintf(jsonData, sizeof(jsonData),
@@ -89,10 +152,10 @@ void loop() {
     Serial.println(jsonData);
     Serial.println(strlen(jsonData));
     
-    if (client.connect(server, port)) {
+    if (client.connect(remoteServer, remoteServerPort)) {
         // send the HTTP POST request:
         client.println("POST /log HTTP/1.1");
-        client.println("Host: " + String(server));
+        client.println("Host: " + String(remoteServer));
         client.println("Content-Type: application/json");
         client.println("Connection: close");
         // calculate the length of the JSON data
@@ -107,108 +170,16 @@ void loop() {
         // if you couldn't make a connection:
         Serial.println("connection failed");
     }
-    delay(2000); 
-
-    read_dropServer(&autoWateringRequest, &manualWateringRequest);
-
-    delay(2000);
-
-    // WiFiClient client;
-    // //const char* server = "64.23.202.34";  // Replace with your server's IP address
-    // const int port = 3000;  // Replace with your server's port
-
-    // if (client.connect(server, port)) 
-    // {
-    //     client.println("GET /manualWaterStatus HTTP/1.1");
-    //     client.println("Host: " + String(server));
-    //     client.println("Connection: close");
-    //     client.println();
-    //     unsigned long startTimems = millis();
-    //     while (client.connected() && millis() - startTimems < 1000)
-    //     {
-    //         if (client.available()) 
-    //         {
-    //             String line = client.readStringUntil('\n');
-    //             if (line == "1") 
-    //             {
-    //                 manualWateringRequest = true;
-    //                 break;
-    //             } 
-    //             else if (line == "0") 
-    //             {
-    //                 manualWateringRequest = false;
-    //                 break;
-    //             }
-    //         }
-    //     }
-    //     Serial.print("manualWateringRequest: ");
-    //     Serial.println(manualWateringRequest);
-    //     client.stop();
-    //     //setManualWaterStatus(manualWateringRequest);
-    // } 
-    // else 
-    // {
-    //     Serial.println("connection failed in read_dropServer");
-    //     client.stop();
-    // }
-    // delay(2500);
-
-
-    // {
-    //     WiFiClient client;
-    //     //const char* server = "64.23.202.34";  // Replace with your server's IP address
-    //     const int port = 3000;  // Replace with your server's port        
-
-    //     if (client.connect(server, port)) {
-    //         client.println("GET /autoWaterStatus HTTP/1.1");
-    //         client.println("Host: " + String(server));
-    //         client.println("Connection: close");
-    //         client.println();
-    //         unsigned long startTimems = millis();
-    //         while (client.connected() && millis() - startTimems < 1000)
-    //         {
-    //             if (client.available()) {
-    //                 String line = client.readStringUntil('\n');
-    //                 if (line == "1") 
-    //                 {
-    //                     autoWateringRequest = true;
-    //                     break;
-    //                 } 
-    //                 else if (line == "0") 
-    //                 {
-    //                     autoWateringRequest = false;
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //         Serial.print("autoWateringRequest: ");
-    //         Serial.println(autoWateringRequest);
-    //         client.stop();
-    //         //setAutolWaterStatus(autoWateringRequest);
-    //     } 
-    //     else 
-    //     {
-    //         Serial.println("connection failed in read_dropServer");
-    //         client.stop();
-    //     }
-    // }
 }
 
-
-void read_dropServer(bool* autoWateringRequest, bool* manualWaterOverrideRequest)
+bool read_dropServer(bool* autoWateringRequest, bool* manualWaterOverrideRequest, bool* aRefreshRequest)
 {
+    bool connectionSolid = true;
     WiFiClient client;
-    //     if (client.connect(server, port)) {
-    //         client.println("GET /autoWaterStatus HTTP/1.1");
-    //         client.println("Host: " + String(server));
-    //         client.println("Connection: close");
-    //         client.println();
-    //         unsigned long startTimems = millis();
-    //         while (client.connected() && millis() - startTimems < 1000)
 
-    if (client.connect(server, port)) {
-        client.println("GET /status HTTP/1.1"); // client.println("GET /autoWaterStatus HTTP/1.1");
-        client.println("Host: " + String(server));
+    if (client.connect(remoteServer, remoteServerPort)) {
+        client.println("GET /status HTTP/1.1");
+        client.println("Host: " + String(remoteServer));
         client.println("Connection: close");
         client.println();
         unsigned long startTimems = millis();
@@ -222,13 +193,20 @@ void read_dropServer(bool* autoWateringRequest, bool* manualWaterOverrideRequest
                     int manualWaterOverrideEnd = line.indexOf(",");
                     String manualWaterOverride = line.substring(manualWaterOverrideStart, manualWaterOverrideEnd);
                     manualWaterOverride.trim();
-                    int autoWaterStatusStart = line.lastIndexOf(":") + 1;
-                    int autoWaterStatusEnd = line.lastIndexOf("}");
+
+                    int autoWaterStatusStart = line.indexOf(":", manualWaterOverrideEnd) + 1;
+                    int autoWaterStatusEnd = line.indexOf(",", manualWaterOverrideEnd);
                     String autoWaterStatus = line.substring(autoWaterStatusStart, autoWaterStatusEnd);
                     autoWaterStatus.trim();
 
+                    int gRefreshRequestStart = line.lastIndexOf(":") + 1;
+                    int gRefreshRequestEnd = line.lastIndexOf("}");
+                    String refreshRequest = line.substring(gRefreshRequestStart, gRefreshRequestEnd);
+                    refreshRequest.trim();
+
                     *autoWateringRequest = (autoWaterStatus == "true");
                     *manualWaterOverrideRequest = (manualWaterOverride == "true");
+                    *aRefreshRequest = (refreshRequest == "true");
                     break;
                 }
             }
@@ -237,11 +215,15 @@ void read_dropServer(bool* autoWateringRequest, bool* manualWaterOverrideRequest
         Serial.println(*autoWateringRequest);
         Serial.print("manualWaterOverrideRequest: ");
         Serial.println(*manualWaterOverrideRequest);
+        Serial.print("gRefreshRequest: ");
+        Serial.println(*aRefreshRequest);
         client.stop();
     } 
     else 
     {
+        connectionSolid = false;
         Serial.println("connection failed in read_dropServer");
         client.stop();
     }
+    return connectionSolid;
 }
