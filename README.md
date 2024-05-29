@@ -14,7 +14,7 @@ docker buildx build --platform linux/amd64,linux/arm64 -t turkeypoint/dropserver
 docker buildx create --use
 docker buildx inspect --bootstrap
 
-# to run the container we use this command:
+# to run the container we use this command locally:
 docker run -d -p 3000:3000 --name local_dropserver dropserver
 
 # to deploy and run on the droplet:

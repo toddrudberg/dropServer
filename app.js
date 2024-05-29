@@ -7,6 +7,9 @@ const { log } = require('console');
 const app = express();
 const port = 3000;
 
+let gRefreshRequest = false;
+let gRefreshRequestReceived = false;
+
 app.use(bodyParser.json());
 
 const csvFilePath = path.join(__dirname, 'data_log.csv');
@@ -139,10 +142,51 @@ app.get('/manualWaterStatus', (req, res) => {
   });
 });
 
+//let's get manualWatherOverride status and autoWaterStatus in one call
+//const fs = require('fs');
+//const path = require('path');
+
+app.get('/status', (req, res) => {
+  gRefreshRequestReceived = gRefreshRequest;
+  const manualWaterOverridePath = path.join(__dirname, 'manualWaterOverride.csv');
+  const autoWaterStatusPath = path.join(__dirname, 'autoWaterStatus.csv');
+
+  fs.readFile(manualWaterOverridePath, 'utf8', (err, manualWaterOverride) => {
+    if (err) {
+      console.error('Error reading manualWaterOverride.csv', err);
+      return res.status(500).send('Error reading manual water override status');
+    }
+
+    fs.readFile(autoWaterStatusPath, 'utf8', (err, autoWaterStatus) => {
+      if (err) {
+        console.error('Error reading autoWaterStatus.csv', err);
+        return res.status(500).send('Error reading auto water status');
+      }
+
+      const manualWaterOverrideStatus = manualWaterOverride.trim().toLowerCase() === 'true';
+      const autoWaterStatusStatus = autoWaterStatus.trim().toLowerCase() === 'true';
+      console.log(" ");
+      console.log('-------------------')
+      console.log('Status request received');
+      console.log(`Manual Water Override Status: ${manualWaterOverrideStatus}`);
+      console.log(`Auto Water Status: ${autoWaterStatusStatus}`);
+      console.log(`Refresh Request: ${gRefreshRequest}`);
+      console.log('-------------------');
+
+      res.json({
+        manualWaterOverride: manualWaterOverrideStatus,
+        autoWaterStatus: autoWaterStatusStatus,
+        gRefreshRequest: gRefreshRequest
+      });
+    });
+  });
+});
+
 const readLastLines = require('read-last-lines');
 const csvParser = require('csv-parser');
 
 app.get('/last-row', (req, res) => {
+  gRefreshRequest = !gRefreshRequestReceived;
   readLastLines.read(csvFilePath, 2)
     .then((lines) => {
       const lastLine = lines.split('\n')[0];
@@ -191,6 +235,7 @@ app.get('/last-row', (req, res) => {
       console.error('Error reading last line:', err);
       res.status(500).send('Error reading last line');
     });
+
 });
 
 //{"Time":"12:34:56","Date":"2023-05-25","OAT":22.5,"OAH":45.2,"BP":1013.1,"SM":20.3,"ST":1.2,"SEC":30.1,"SPH":6.5,"WATERING":true,"WATERINGTIMEREMAINING":120}% 
