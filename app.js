@@ -8,6 +8,7 @@ const app = express();
 const port = 3000;
 
 let gRefreshRequest = false;
+let gRefreshRequestReceived = false;
 
 app.use(bodyParser.json());
 
@@ -146,6 +147,7 @@ app.get('/manualWaterStatus', (req, res) => {
 //const path = require('path');
 
 app.get('/status', (req, res) => {
+  gRefreshRequestReceived = gRefreshRequest;
   const manualWaterOverridePath = path.join(__dirname, 'manualWaterOverride.csv');
   const autoWaterStatusPath = path.join(__dirname, 'autoWaterStatus.csv');
 
@@ -161,9 +163,19 @@ app.get('/status', (req, res) => {
         return res.status(500).send('Error reading auto water status');
       }
 
+      const manualWaterOverrideStatus = manualWaterOverride.trim().toLowerCase() === 'true';
+      const autoWaterStatusStatus = autoWaterStatus.trim().toLowerCase() === 'true';
+      console.log(" ");
+      console.log('-------------------')
+      console.log('Status request received');
+      console.log(`Manual Water Override Status: ${manualWaterOverrideStatus}`);
+      console.log(`Auto Water Status: ${autoWaterStatusStatus}`);
+      console.log(`Refresh Request: ${gRefreshRequest}`);
+      console.log('-------------------');
+
       res.json({
-        manualWaterOverride: manualWaterOverride.trim().toLowerCase() === 'true',
-        autoWaterStatus: autoWaterStatus.trim().toLowerCase() === 'true',
+        manualWaterOverride: manualWaterOverrideStatus,
+        autoWaterStatus: autoWaterStatusStatus,
         gRefreshRequest: gRefreshRequest
       });
     });
@@ -174,6 +186,7 @@ const readLastLines = require('read-last-lines');
 const csvParser = require('csv-parser');
 
 app.get('/last-row', (req, res) => {
+  gRefreshRequest = !gRefreshRequestReceived;
   readLastLines.read(csvFilePath, 2)
     .then((lines) => {
       const lastLine = lines.split('\n')[0];
@@ -222,7 +235,7 @@ app.get('/last-row', (req, res) => {
       console.error('Error reading last line:', err);
       res.status(500).send('Error reading last line');
     });
-    gRefreshRequest = !gRefreshRequest;
+
 });
 
 //{"Time":"12:34:56","Date":"2023-05-25","OAT":22.5,"OAH":45.2,"BP":1013.1,"SM":20.3,"ST":1.2,"SEC":30.1,"SPH":6.5,"WATERING":true,"WATERINGTIMEREMAINING":120}% 
