@@ -1,6 +1,7 @@
 # dropServer
 This is the digital ocean webserver for the gardenBot project
 ssh root@64.23.202.34
+curl http://64.23.202.34:3000/status
 curl http://64.23.202.34:3000/last-row
 curl http://64.23.202.34:3000/enableManualWater
 curl http://64.23.202.34:3000/disableManualWater
@@ -20,6 +21,13 @@ docker run -d -p 3000:3000 --name local_dropserver dropserver
 # to deploy and run on the droplet:
 docker pull turkeypoint/dropserver:latest
 docker run -d -p 3000:3000 --name remote_dropserver turkeypoint/dropserver:latest
+
+# to execute docker commands on the remote server
+docker exec -it remote_dropserver ls -l
+docker cp remote_dropserver:data_log.csv gardenBot:root
+ssh root@64.23.202.34 docker cp remote_dropserver:data_log.csv /root/
+scp -P 22 root@64.23.202.34:data_log.csv /users/toddrudberg/downloads/
+
 
 
 # to view running containers:
