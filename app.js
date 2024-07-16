@@ -17,7 +17,7 @@ const csvFilePath = path.join(__dirname, 'data_log.csv');
 const csvHeaders = [
   'DateStamp', 'TimeStamp', 'Epoch', 'OutsideAirTemp', 'OutsideHumidity', 
   'OutsideBaro', 'SoilTemperature', 'SoilElectricalConductivity', 
-  'SoilHumidity', 'SoilPh', 'Watering', 'TimeRemaining', 'autoWaterCycleEnabled', 'WifiError', 'SDError', 'RTCFailed'
+  'SoilHumidity', 'SoilPh', 'Watering', 'TimeRemaining', 'autoWaterCycleEnabled', 'WifiError', 'SDError', 'RTCFailed', 'avgOATYesterday'
 ];
 
 const csvWriter = require('csv-writer').createObjectCsvWriter;
@@ -39,7 +39,7 @@ app.post('/log', (req, res) => {
     logData.OutsideAirTemp, logData.OutsideHumidity, logData.OutsideBaro, 
     logData.SoilTemperature, logData.SoilElectricalConductivity, 
     logData.SoilHumidity, logData.SoilPh, logData.Watering, logData.TimeRemaining, logData.autoWaterCycleEnabled,
-    logData.WifiError, logData.SDError, logData.RTCFailed
+    logData.WifiError, logData.SDError, logData.RTCFailed, logData.AvgTempPrevDay
   ].join(',') + '\n';
 
   csvWriter.write(csvRow, (err) => {

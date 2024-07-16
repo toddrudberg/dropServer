@@ -6,6 +6,9 @@ curl http://64.23.202.34:3000/last-row
 curl http://64.23.202.34:3000/enableManualWater
 curl http://64.23.202.34:3000/disableManualWater
 curl http://192.168.1.31:3000/last-row
+curl -X GET http://localhost:3000/logs --output /users/toddrudberg/downloads/logs.csv
+curl -X GET http://64.23.202.34:3000/logs --output /users/toddrudberg/downloads/logs.csv
+
 
 # to build the application
 docker build -t dropserver .
@@ -21,6 +24,16 @@ docker run -d -p 3000:3000 --name local_dropserver dropserver
 # to deploy and run on the droplet:
 docker pull turkeypoint/dropserver:latest
 docker run -d -p 3000:3000 --name remote_dropserver turkeypoint/dropserver:latest
+
+# steps to follow to change the remote dropserver:
+I think you have to stop the container, 
+remove the container, 
+then build the container, 
+then deploy and run.  
+
+I literally have no idea how this PC connects to the remote dropserver, but if you log into digital ocean you can access a terminal and it seems to magically work. 
+
+
 
 # to execute docker commands on the remote server
 docker exec -it remote_dropserver ls -l
