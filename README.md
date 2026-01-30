@@ -2,12 +2,21 @@
 This is the digital ocean webserver for the gardenBot project
 ssh root@64.23.202.34
 curl http://64.23.202.34:3000/status
+curl http://64.23.202.34:3000/Refresh
+
 curl http://64.23.202.34:3000/last-row
 curl http://64.23.202.34:3000/enableManualWater
 curl http://64.23.202.34:3000/disableManualWater
+
+
 curl http://192.168.1.31:3000/last-row
 curl -X GET http://localhost:3000/logs --output /users/toddrudberg/downloads/logs.csv
-curl -X GET http://64.23.202.34:3000/logs --output /users/toddrudberg/downloads/logs.csv
+curl -X GET http://64.23.202.34:3000/logs --output /users/toddrudberg/downloads/logs.csv  (you have to delete any logs that might be there, this won't overwrite them)
+
+ssh-keygen -t ed25519 -C "todd.rudberg@icloud.com"
+
+# to log into the drop server
+ssh root@64.23.202.34
 
 
 # to build the application

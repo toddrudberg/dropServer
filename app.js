@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
 const { log } = require('console');
+const cors = require('cors');
 
 const app = express();
 const port = 3000;
@@ -10,7 +11,10 @@ const port = 3000;
 let gRefreshRequest = false;
 let gRefreshRequestReceived = false;
 
+app.use(cors()); 
 app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
 
 const csvFilePath = path.join(__dirname, 'data_log.csv');
 

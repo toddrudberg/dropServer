@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GardBot UI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    .status { margin-bottom: 1em; }
+    button { margin: 0.5em; }
+  </style>
+</head>
+<body>
+  <h1>GardBot Dashboard</h1>
+  <div class="status">
+    <strong>Manual Water:</strong> <span id="manual">Loading...</span><br>
+    <strong>Auto Water:</strong> <span id="auto">Loading...</span>
+  </div>
+  <h2>Latest Readings</h2>
+    <pre id="lastRow">Loading...</pre>
+
+  <button onclick="toggle('manual', true)">Enable Manual</button>
+  <button onclick="toggle('manual', false)">Disable Manual</button>
+  <br>
+  <button onclick="toggle('auto', true)">Enable Auto</button>
+  <button onclick="toggle('auto', false)">Disable Auto</button>
+  <br><br>
+  <button onclick="downloadLog()">Download Logs</button>
+
+  <script>
+    async function refreshStatus() {
+      const res = await fetch('/status');
+      const data = await res.json();
+      document.getElementById('manual').textContent = data.manualWaterOverride ? 'ON' : 'OFF';
+      document.getElementById('auto').textContent = data.autoWaterStatus ? 'ON' : 'OFF';
+    }
+
+    function toggle(type, state) {
+      const url = type === 'manual'
+        ? (state ? '/enableManualWater' : '/disableManualWater')
+        : (state ? '/enableAutoWater' : '/disableAutoWater');
+      fetch(url, { method: 'POST' })
+        .then(() => refreshStatus())
+        .catch(console.error);
+    }
+
+    function downloadLog() {
+      window.location.href = '/logs';
+    }
+
+    refreshStatus();
+    setInterval(refreshStatus, 5000);
+
+    async function refreshLastRow() {
+    const res = await fetch('/last-row');
+    const data = await res.json();
+    document.getElementById('lastRow').textContent =
+        `Time: ${data.Time}\n` +
+        `Date: ${data.Date}\n` +
+        `OAT: ${data.OAT} °C\n` +
+        `OAH: ${data.OAH} %\n` +
+        `BP: ${data.BP} hPa\n` +
+        `Soil Moisture: ${data.SM} %\n` +
+        `Soil Temp: ${data.ST} °C\n` +
+        `Soil EC: ${data.SEC} µS/cm\n` +
+        `Soil pH: ${data.SPH}\n` +
+        `Watering: ${data.WATERING ? 'YES' : 'NO'}\n` +
+        `Time Remaining: ${data.WATERINGTIMEREMAINING} min\n` +
+        `Auto Mode: ${data.AUTO ? 'ENABLED' : 'DISABLED'}`;
+    }
+
+    // Call once on load, and then every 5 seconds
+    refreshLastRow();
+    setInterval(refreshLastRow, 5000);
+
+  </script>
+</body>
+</html>
