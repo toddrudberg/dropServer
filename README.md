@@ -16,10 +16,7 @@ curl -s http://127.0.0.1:3000/status && echo
 
 ## to update the docker container:
 # to production deploy:
-docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  -t turkeypoint/dropserver:latest \
-  --push .
+docker buildx build --platform linux/amd64,linux/arm64 -t turkeypoint/dropserver:latest --push .
 
 # local test only (no push)
 docker build -t turkeypoint/dropserver:local .

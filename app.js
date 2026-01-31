@@ -29,35 +29,37 @@ const csvHeaders = [
 const csvWriter = require('csv-writer').createObjectCsvWriter;
 
 app.post('/log', (req, res) => {
-  const logData = req.body;
+  try {
+    const logData = req.body;
 
-  console.log('CSV file path:', csvFilePath);
-  console.log('File exists:', fs.existsSync(csvFilePath));
-
-  if (!fs.existsSync(csvFilePath)) {
-    const headerRow = csvHeaders.join(',') + '\n';
-    fs.writeFileSync(csvFilePath, headerRow);
-  }
-
-  const csvWriter = fs.createWriteStream(csvFilePath, { flags: 'a' });
-  const csvRow = [
-    logData.DateStamp, logData.TimeStamp, logData.Epoch, 
-    logData.OutsideAirTemp, logData.OutsideHumidity, logData.OutsideBaro, 
-    logData.SoilTemperature, logData.SoilElectricalConductivity, 
-    logData.SoilHumidity, logData.SoilPh, logData.Watering, logData.TimeRemaining, logData.autoWaterCycleEnabled,
-    logData.WifiError, logData.SDError, logData.RTCFailed, logData.AvgTempPrevDay
-  ].join(',') + '\n';
-
-  csvWriter.write(csvRow, (err) => {
-    if (err) {
-      console.error('Error writing to CSV', err);
-      res.status(500).send('Error logging data');
-    } else {
-      console.log('Data logged to CSV');
-      res.status(200).send('Data received');
+    if (!fs.existsSync(csvFilePath)) {
+      fs.writeFileSync(csvFilePath, csvHeaders.join(',') + '\n');
     }
-  });
+
+    const csvRow = [
+      logData.DateStamp, logData.TimeStamp, logData.Epoch,
+      logData.OutsideAirTemp, logData.OutsideHumidity, logData.OutsideBaro,
+      logData.SoilTemperature, logData.SoilElectricalConductivity,
+      logData.SoilHumidity, logData.SoilPh, logData.Watering,
+      logData.TimeRemaining, logData.autoWaterCycleEnabled,
+      logData.WifiError, logData.SDError, logData.RTCFailed,
+      logData.AvgTempPrevDay
+    ].join(',') + '\n';
+
+    fs.appendFile(csvFilePath, csvRow, (err) => {
+      if (err) {
+        console.error('Error writing to CSV', err);
+        return res.status(500).send('Error logging data');
+      }
+      res.status(200).send('Data received');
+    });
+
+  } catch (err) {
+    console.error('Unexpected /log error:', err);
+    res.status(500).send('Server error');
+  }
 });
+
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -248,7 +250,162 @@ app.get('/last-row', (req, res) => {
 
 });
 
-//{"Time":"12:34:56","Date":"2023-05-25","OAT":22.5,"OAH":45.2,"BP":1013.1,"SM":20.3,"ST":1.2,"SEC":30.1,"SPH":6.5,"WATERING":true,"WATERINGTIMEREMAINING":120}% 
+// ------------------------------
+// Nursery endpoints (simple GET/POST + logging)
+// ------------------------------
+
+const nurseryCsvFilePath = path.join(__dirname, 'nursery_log.csv');
+const nurseryLatestPath = path.join(__dirname, 'nursery_latest.json');
+
+// OPTIONAL: set NURSERY_TOKEN in docker env to prevent random writes
+// docker run ... -e NURSERY_TOKEN="some-long-random-string"
+const NURSERY_TOKEN = process.env.NURSERY_TOKEN || "";
+
+// choose your fields (keep it simple)
+const nurseryHeaders = [
+  'DateStamp', 'TimeStamp', 'Epoch',
+  'TempC', 'TempF', 'Humidity', 'Pressure_hPa',
+  'WifiError'
+];
+
+function nurseryAuthOk(req) {
+  if (!NURSERY_TOKEN) return true; // if not set, allow
+  const token = req.query.token || req.headers['x-nursery-token'];
+  return token === NURSERY_TOKEN;
+}
+
+function ensureFileWithHeader(filePath, headers) {
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, headers.join(',') + '\n');
+  }
+}
+
+function appendCsvRow(filePath, rowArray) {
+  const line = rowArray.join(',') + '\n';
+  fs.appendFile(filePath, line, (err) => {
+    if (err) console.error('CSV append error:', err);
+  });
+}
+
+app.post('/nursery/log', (req, res) => {
+  try {
+    if (!nurseryAuthOk(req)) return res.status(403).send('Forbidden');
+
+    const d = req.body || {};
+
+    // Minimal validation: must have TempC (or TempF) to be meaningful
+    const tempC = (d.TempC !== undefined) ? Number(d.TempC) : NaN;
+    const tempF = (d.TempF !== undefined) ? Number(d.TempF) : (isFinite(tempC) ? (tempC * 9/5 + 32) : NaN);
+
+    const latest = {
+      DateStamp: d.DateStamp || '',
+      TimeStamp: d.TimeStamp || '',
+      Epoch: d.Epoch || '',
+      TempC: isFinite(tempC) ? tempC : null,
+      TempF: isFinite(tempF) ? tempF : null,
+      Humidity: (d.Humidity !== undefined) ? Number(d.Humidity) : null,
+      Pressure_hPa: (d.Pressure_hPa !== undefined) ? Number(d.Pressure_hPa) : null,
+      WifiError: d.WifiError ?? '',
+      serverReceivedMs: Date.now()
+    };
+
+    // save "latest"
+    fs.writeFileSync(nurseryLatestPath, JSON.stringify(latest, null, 2));
+
+    // append CSV
+    ensureFileWithHeader(nurseryCsvFilePath, nurseryHeaders);
+
+    appendCsvRow(nurseryCsvFilePath, [
+      latest.DateStamp,
+      latest.TimeStamp,
+      latest.Epoch,
+      latest.TempC,
+      latest.TempF,
+      latest.Humidity,
+      latest.Pressure_hPa,
+      latest.WifiError
+    ]);
+
+    res.status(200).send('ok');
+  } catch (err) {
+    console.error('nursery/log error:', err);
+    res.status(500).send('error');
+  }
+});
+
+app.get('/nursery/latest', (req, res) => {
+  try {
+    if (!fs.existsSync(nurseryLatestPath)) {
+      return res.status(200).json({ ok: false, message: "No nursery data yet" });
+    }
+    const txt = fs.readFileSync(nurseryLatestPath, 'utf8');
+    res.type('json').send(txt);
+  } catch (err) {
+    console.error('nursery/latest error:', err);
+    res.status(500).json({ ok: false, message: "Error reading latest" });
+  }
+});
+
+app.get('/nursery', (req, res) => {
+  res.type('html').send(`
+<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta http-equiv="refresh" content="5">
+  <title>Nursery</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 22px; padding: 12px; }
+    .ok { color: #0a0; }
+    .bad { color: #a00; }
+    .small { font-size: 14px; opacity: 0.7; margin-top: 10px; }
+    code { background: #f3f3f3; padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h2>Nursery</h2>
+  <div id="out">Loading...</div>
+  <div class="small">Endpoint: <code>/nursery/latest</code></div>
+
+<script>
+fetch('/nursery/latest')
+  .then(r => r.json())
+  .then(d => {
+    if (!d || d.ok === false) {
+      document.getElementById('out').innerHTML = '<span class="bad">No data yet</span>';
+      return;
+    }
+    const tF = (d.TempF !== null && d.TempF !== undefined) ? d.TempF.toFixed(1) : 'n/a';
+    const h  = (d.Humidity !== null && d.Humidity !== undefined) ? d.Humidity.toFixed(1) : 'n/a';
+    const p  = (d.Pressure_hPa !== null && d.Pressure_hPa !== undefined) ? d.Pressure_hPa.toFixed(1) : 'n/a';
+    const ageSec = Math.floor((Date.now() - (d.serverReceivedMs || Date.now())) / 1000);
+
+    document.getElementById('out').innerHTML =
+      'Temp: <b>' + tF + ' F</b><br>' +
+      'Humidity: <b>' + h + ' %</b><br>' +
+      'Pressure: <b>' + p + ' hPa</b><br>' +
+      '<div class="small">Age: ' + ageSec + 's | ' + (d.DateStamp||'') + ' ' + (d.TimeStamp||'') + '</div>';
+  })
+  .catch(e => {
+    document.getElementById('out').innerHTML = '<span class="bad">Error loading data</span>';
+  });
+</script>
+</body>
+</html>
+  `);
+});
+
+app.get('/nursery/logs', (req, res) => {
+  if (!fs.existsSync(nurseryCsvFilePath)) {
+    return res.status(404).send('No nursery logs yet.');
+  }
+  res.download(nurseryCsvFilePath, (err) => {
+    if (err) {
+      console.error('Error sending nursery log file:', err);
+      res.status(500).send('Error sending file');
+    }
+  });
+});
 
 
 app.listen(port, () => {
