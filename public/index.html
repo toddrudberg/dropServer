@@ -1,0 +1,278 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Greenhouse Monitor</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f4f8;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    h1 {
+      text-align: center;
+      color: #2c5f2d;
+      margin-bottom: 0.4em;
+    }
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+    .stat {
+      text-align: center;
+      padding: 12px;
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+    .stat-label {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: 600;
+    }
+    .bool-true  { background: #d4f4dd; color: #1a6332; }
+    .bool-false { background: #fee2e2; color: #991b1b; }
+    .watering-active {
+      background: #fef3c7 !important;
+      color: #92400e;
+      font-weight: bold;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%     { opacity: 0.7; }
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin: 24px 0;
+    }
+    button {
+      padding: 14px 24px;
+      font-size: 1.05rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-primary   { background: #2563eb; color: white; }
+    .btn-primary:hover   { background: #1d4ed8; }
+    .btn-danger    { background: #dc2626; color: white; }
+    .btn-danger:hover    { background: #b91c1c; }
+    .btn-success   { background: #16a34a; color: white; }
+    .btn-success:hover   { background: #15803d; }
+    .btn-outline   { background: transparent; border: 2px solid #6b7280; color: #374151; }
+    .btn-outline:hover { background: #f3f4f6; }
+    #last-update {
+      text-align: center;
+      color: #666;
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+    .error {
+      color: #dc2626;
+      text-align: center;
+      margin: 12px 0;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Greenhouse Control</h1>
+
+  <div class="card">
+    <div class="status-grid">
+      <div class="stat">
+        <div class="stat-label">Outside Temp</div>
+        <div class="stat-value" id="oat">-- °C</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Outside Hum</div>
+        <div class="stat-value" id="oah">-- %</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Baro Pressure</div>
+        <div class="stat-value" id="bp">-- hPa</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Soil Moisture</div>
+        <div class="stat-value" id="sm">-- %</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Soil Temp</div>
+        <div class="stat-value" id="st">-- °C</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Soil EC</div>
+        <div class="stat-value" id="sec">--</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Soil pH</div>
+        <div class="stat-value" id="sph">--</div>
+      </div>
+    </div>
+
+    <div class="status-grid" style="margin-top: 24px;">
+      <div class="stat" id="watering-stat">
+        <div class="stat-label">Watering</div>
+        <div class="stat-value" id="watering">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Time Remaining</div>
+        <div class="stat-value" id="timerem">— min</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Auto Mode</div>
+        <div class="stat-value" id="auto">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Manual Override</div>
+        <div class="stat-value" id="manual">—</div>
+      </div>
+    </div>
+
+    <div id="last-update">Last update: never</div>
+    <div id="error-msg" class="error"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="text-align:center; margin-top:0">Controls</h3>
+    <div class="controls">
+      <button class="btn-success" onclick="setAuto(true)">Enable Auto Water</button>
+      <button class="btn-danger"  onclick="setAuto(false)">Disable Auto Water</button>
+    </div>
+    <div class="controls">
+      <button class="btn-primary" onclick="setManual(true)">Force Manual Water ON</button>
+      <button class="btn-outline" onclick="setManual(false)">Cancel Manual Override</button>
+    </div>
+    <div class="controls">
+      <button class="btn-outline" onclick="refreshData()">Refresh Now</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = "";   // ← change to http://192.168.x.x:3000 if accessing from phone
+
+const els = {
+  oat:       document.getElementById("oat"),
+  oah:       document.getElementById("oah"),
+  bp:        document.getElementById("bp"),
+  sm:        document.getElementById("sm"),
+  st:        document.getElementById("st"),
+  sec:       document.getElementById("sec"),
+  sph:       document.getElementById("sph"),
+  watering:  document.getElementById("watering"),
+  timerem:   document.getElementById("timerem"),
+  auto:      document.getElementById("auto"),
+  manual:    document.getElementById("manual"),
+  wateringStat: document.getElementById("watering-stat"),
+  lastUpdate: document.getElementById("last-update"),
+  error:     document.getElementById("error-msg"),
+};
+
+function showError(msg) {
+  els.error.textContent = msg;
+  setTimeout(() => { els.error.textContent = ""; }, 5000);
+}
+
+async function refreshData() {
+  try {
+    const r = await fetch(`${API_BASE}/last-row`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+    const data = await r.json();
+
+    els.oat.textContent      = data.OAT?.toFixed(1) ?? "—";
+    els.oah.textContent      = data.OAH?.toFixed(1) ?? "—";
+    els.bp.textContent       = data.BP?.toFixed(1)  ?? "—";
+    els.sm.textContent       = data.SM?.toFixed(1)  ?? "—";
+    els.st.textContent       = data.ST?.toFixed(1)  ?? "—";
+    els.sec.textContent      = data.SEC?.toFixed(1) ?? "—";
+    els.sph.textContent      = data.SPH?.toFixed(1) ?? "—";
+
+    const isWatering = data.WATERING === true || data.WATERING === "true";
+    els.watering.textContent = isWatering ? "ACTIVE" : "Off";
+    els.wateringStat.className = "stat " + (isWatering ? "watering-active" : "");
+
+    const rem = Number(data.WATERINGTIMEREMAINING);
+    els.timerem.textContent  = (isWatering && rem > 0) ? rem.toFixed(0) + " min" : "—";
+
+    els.auto.textContent     = data.AUTO === true || data.AUTO === "true" ? "ON" : "OFF";
+    els.lastUpdate.textContent = `Last update: ${new Date().toLocaleTimeString()}`;
+
+    // Bonus: also get control states
+    const st = await fetch(`${API_BASE}/status`);
+    if (st.ok) {
+      const s = await st.json();
+      els.manual.textContent = s.manualWaterOverride ? "ACTIVE" : "Off";
+      els.auto.textContent   = s.autoWaterStatus     ? "ON" : "OFF";
+    }
+
+  } catch (err) {
+    console.error(err);
+    showError("Cannot reach server – is it running?");
+  }
+}
+
+async function setAuto(enable) {
+  const endpoint = enable ? "/enableAutoWater" : "/disableAutoWater";
+  try {
+    const r = await fetch(`${API_BASE}${endpoint}`, { method: "POST" });
+    if (r.ok) {
+      alert(`Auto water ${enable ? "enabled" : "disabled"}`);
+      refreshData();
+    } else {
+      showError("Command failed");
+    }
+  } catch (err) {
+    showError("Network error");
+  }
+}
+
+async function setManual(enable) {
+  const endpoint = enable ? "/enableManualWater" : "/disableManualWater";
+  try {
+    const r = await fetch(`${API_BASE}${endpoint}`, { method: "POST" });
+    if (r.ok) {
+      alert(`Manual override ${enable ? "enabled" : "disabled"}`);
+      refreshData();
+    } else {
+      showError("Command failed");
+    }
+  } catch (err) {
+    showError("Network error");
+  }
+}
+
+// Load immediately + auto-refresh every 15 seconds
+refreshData();
+setInterval(refreshData, 15000);
+</script>
+</body>
+</html>

@@ -8,6 +8,8 @@ const cors = require('cors');
 const app = express();
 const port = 3000;
 
+app.use(express.static(path.join(__dirname, 'public')));
+
 let gRefreshRequest = false;
 let gRefreshRequestReceived = false;
 
@@ -55,6 +57,10 @@ app.post('/log', (req, res) => {
       res.status(200).send('Data received');
     }
   });
+});
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/logs', (req, res) => {

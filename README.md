@@ -1,5 +1,30 @@
 # dropServer
-This is the digital ocean webserver for the gardenBot project
+DigitalOcean webserver for the GardenBot project (Docker container).
+
+## Deploy / Update on the droplet
+Login to DigitalOcean → open Console (or SSH).
+
+```bash
+docker rm -f remote_dropserver
+docker pull turkeypoint/dropserver:latest
+docker run -d --restart unless-stopped -p 3000:3000 --name remote_dropserver turkeypoint/dropserver:latest
+
+docker logs --tail 50 remote_dropserver
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+ss -ltnp | grep :3000 || echo "not listening on 3000"
+curl -s http://127.0.0.1:3000/status && echo
+
+## to update the docker container:
+# to production deploy:
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t turkeypoint/dropserver:latest \
+  --push .
+
+# local test only (no push)
+docker build -t turkeypoint/dropserver:local .
+
+
 ssh root@64.23.202.34
 curl http://64.23.202.34:3000/status
 curl http://64.23.202.34:3000/Refresh
@@ -19,9 +44,6 @@ ssh-keygen -t ed25519 -C "todd.rudberg@icloud.com"
 ssh root@64.23.202.34
 
 
-# to build the application
-docker build -t dropserver .
-docker buildx build --platform linux/amd64,linux/arm64 -t turkeypoint/dropserver:latest --push .
 
 # i think we don't need to run these anymore, but they allow us to do multi-architecture builds:
 docker buildx create --use
